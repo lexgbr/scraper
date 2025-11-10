@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../apps/web/node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:../data/demo.db"
+}
+
+
+model Site {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+  base  String
+  links ProductLink[]
+}
+
+model Product {
+  id        Int      @id @default(autoincrement())
+  name      String
+  sku       String?  @unique
+  links     ProductLink[]
+  createdAt DateTime @default(now())
+}
+
+model ProductLink {
+  id           Int      @id @default(autoincrement())
+  productId    Int
+  siteId       Int
+  url          String
+  selector     String?
+  lastPrice    Float?
+  searchQuery  String?
+  lastPricePack Float?
+  lastPriceUnit Float?
+  packSize      Int?
+  unitLabel     String?
+  packLabel     String?
+  lastChecked  DateTime?
+  product      Product   @relation(fields: [productId], references: [id])
+  site         Site      @relation(fields: [siteId], references: [id])
+  snapshots    PriceSnapshot[]
+  changes      PriceChange[]
+}
+
+model PriceSnapshot {
+  id            Int         @id @default(autoincrement())
+  productLinkId Int
+  price         Float
+  packPrice     Float?
+  unitPrice     Float?
+  packSize      Int?
+  capturedAt    DateTime    @default(now())
+  productLink   ProductLink @relation(fields: [productLinkId], references: [id])
+}
+
+model PriceChange {
+  id            Int         @id @default(autoincrement())
+  productLinkId Int
+  old           Float
+  new           Float
+  changedAt     DateTime    @default(now())
+  productLink   ProductLink @relation(fields: [productLinkId], references: [id])
+}
+
+model QueryRun {
+  id         Int      @id @default(autoincrement())
+  startedAt  DateTime @default(now())
+  finishedAt DateTime?
+  status     String   // queued|running|done|error
+  etaSec     Int?
+  note       String?
+}

@@ -1,0 +1,42 @@
+[
+  {
+    "id": 12,
+    "name": "Bake Rolls Garlic",
+    "siteId": "foodex",
+    "url": "https://foodex.london/products/3059",
+    "selector": "price",
+    "searchQuery": null
+  },
+  {
+    "id": 11,
+    "name": "Bake Rolls Garlic",
+    "siteId": "romegafoods",
+    "url": "https://romegafoods.co.uk/product/7-days-bake-rolls-cu-usturoi-12535",
+    "selector": "h1[class*=\"priceDetails_price\"]",
+    "searchQuery": null
+  },
+  {
+    "id": 10,
+    "name": "Bake Rolls Garlic",
+    "siteId": "maxywholesale",
+    "url": "https://maxywholesale.com/",
+    "selector": "select#productUnit",
+    "searchQuery": "Bake Rolls Garlic"
+  },
+  {
+    "id": 9,
+    "name": "Bake Rolls Garlic",
+    "siteId": "mastersale",
+    "url": "https://mastersale.eu/products/details/31280/chipita_7_days_bake_rolls_garlic_80g_romania",
+    "selector": "price-netto",
+    "searchQuery": null
+  },
+  {
+    "id": 8,
+    "name": "Bake Rolls Garlic",
+    "siteId": "romprod",
+    "url": "https://romprod.uk/product/7-days-bake-rolls-usturoi-80g-12/",
+    "selector": "span.woocommerce-Price-amount bdi",
+    "searchQuery": null
+  }
+]

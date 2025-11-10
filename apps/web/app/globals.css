@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+:root {
+  --radius: 16px;
+}
+
+body {
+  @apply bg-gradient-to-br from-indigo-50 via-white to-purple-50 text-slate-900 antialiased;
+}
+
+.btn-ripple {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-ripple::after {
+  content: '';
+  position: absolute;
+  inset: -40%;
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.45), transparent 70%);
+  opacity: 0;
+  transform: scale(0.4);
+  transition: opacity 0.3s ease, transform 0.45s ease;
+  pointer-events: none;
+}
+
+.btn-ripple:active::after {
+  opacity: 1;
+  transform: scale(1);
+}
