@@ -123,7 +123,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (def?.searchMode === 'query') {
           finalUrl = trimmedUrl || def.searchUrl || def.baseUrl;
           if (!finalQuery) {
-            finalQuery = name?.trim() || product?.name || null;
+            finalQuery = name?.trim() || (product as any)?.name || null;
           }
           if (!finalQuery) continue;
         } else if (!finalUrl) {
