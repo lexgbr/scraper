@@ -76,18 +76,37 @@ export class RomegaFoods extends BaseAdapter {
       await button.click({ force: true });
     }
 
-    await page.waitForLoadState('networkidle').catch(() => undefined);
-    await page.waitForTimeout(1000);
-    await page.waitForURL((url) => !/\/login/i.test(url), { timeout: 20000 }).catch(() => undefined);
-
-    // pop-up dismissal (Cancel button)
     try {
-      await page.getByRole('button', { name: 'Cancel', exact: true }).click({ timeout: 3000 });
-      await page.waitForTimeout(500);
+      await page.waitForURL(
+        (url) => !/\/login/i.test(url.href) || /\/my-account/i.test(url.href) || /\/$/i.test(url.pathname),
+        { timeout: 20000 },
+      );
+    } catch {
+      // stay on page; we'll handle below
+    }
+
+    await page.waitForLoadState('networkidle').catch(() => undefined);
+    await page.waitForTimeout(500);
+
+    // pop-up dismissal (Cancel button) - if popup appears, login was successful
+    let popupAppeared = false;
+    try {
+      const modalButton = page.getByRole('button', { name: /cancel/i }).first();
+      if (await modalButton.count()) {
+        popupAppeared = true;
+        await modalButton.click({ timeout: 3000 });
+        await page.waitForTimeout(500);
+      }
     } catch {
       // ignore if modal does not appear
     }
 
+    // If popup appeared, login was successful, no need to check logout link
+    if (popupAppeared) {
+      return;
+    }
+
+    // Otherwise, verify login by checking for logout link
     if (!(await this.hasLogoutLink(page))) {
       await page.waitForTimeout(1000);
       if (!(await this.hasLogoutLink(page))) {

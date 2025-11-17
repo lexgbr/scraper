@@ -217,15 +217,23 @@ function ManualGuideModal({ onClose }: { onClose: () => void }) {
   const linkButton =
     'inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-indigo-600 shadow-sm shadow-indigo-100/50 transition hover:-translate-y-0.5 hover:bg-indigo-50 hover:text-indigo-700';
 
+  const downloadButton =
+    'inline-flex items-center justify-center rounded-2xl border-2 border-indigo-500 bg-indigo-500 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-300/50 transition hover:-translate-y-0.5 hover:bg-indigo-600 hover:border-indigo-600';
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
-      <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl shadow-slate-900/20">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 overflow-y-auto"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-3xl my-8 rounded-3xl bg-white p-6 shadow-2xl shadow-slate-900/20"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-start justify-between gap-4">
           <div>
             <h3 className="text-xl font-semibold text-slate-900">Foodex manual capture</h3>
             <p className="mt-1 text-sm text-slate-500">
-              Foodex requires a verified Cloudflare session. Follow the steps below whenever you need a fresh price
-              update.
+              Foodex requires a verified Cloudflare session. Follow the steps below to set up and use the Chrome extension.
             </p>
           </div>
           <button
@@ -237,21 +245,58 @@ function ManualGuideModal({ onClose }: { onClose: () => void }) {
           </button>
         </div>
 
-        <ol className="mt-4 list-decimal space-y-3 pl-5 text-sm text-slate-600">
-          <li>
-            Click <span className="font-semibold text-slate-900">“Open Foodex login”</span>, sign in manually in the
-            same browser, and keep the tab open so the cookies stay active.
-          </li>
-          <li>
-            Launch the companion Chrome extension or desktop helper. It should fetch{' '}
-            <code className="rounded bg-slate-100 px-1 py-0.5 text-xs text-slate-600">GET /api/manual/foodex</code> to
-            load the product URLs and selectors, scrape prices inside your authenticated tab, then POST results back to{' '}
-            <code className="rounded bg-slate-100 px-1 py-0.5 text-xs text-slate-600">/api/manual/foodex</code>.
-          </li>
-        </ol>
+        <div className="mt-6 space-y-6">
+          <div className="rounded-2xl border-2 border-indigo-100 bg-indigo-50/50 p-4">
+            <h4 className="font-semibold text-slate-900 mb-3">📦 Step 1: Download the Extension</h4>
+            <p className="text-sm text-slate-600 mb-3">
+              Download the Foodex Helper Chrome extension from your project directory.
+            </p>
+            <a className={downloadButton} href="/extensions/foodex-helper.zip" download="foodex-helper.zip">
+              ⬇️ Download Foodex Helper Extension
+            </a>
+            <p className="text-xs text-slate-500 mt-2">
+              Extension location: <code className="bg-white rounded px-1 py-0.5">extensions/foodex-helper/</code>
+            </p>
+          </div>
 
-        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600">
-          <div className="font-semibold text-slate-700">Manual API</div>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <h4 className="font-semibold text-slate-900 mb-3">🔧 Step 2: Install the Extension in Chrome</h4>
+            <ol className="list-decimal space-y-2 pl-5 text-sm text-slate-600">
+              <li>Open Chrome and navigate to <code className="bg-white rounded px-1 py-0.5">chrome://extensions/</code></li>
+              <li>Enable <span className="font-semibold text-slate-900">"Developer mode"</span> using the toggle in the top-right corner</li>
+              <li>Click <span className="font-semibold text-slate-900">"Load unpacked"</span> button</li>
+              <li>Navigate to and select the <code className="bg-white rounded px-1 py-0.5">extensions/foodex-helper/</code> folder in your project</li>
+              <li>The extension icon should now appear in your Chrome toolbar</li>
+            </ol>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <h4 className="font-semibold text-slate-900 mb-3">✅ Step 3: Activate the Extension</h4>
+            <ol className="list-decimal space-y-2 pl-5 text-sm text-slate-600">
+              <li>Click the Foodex Helper extension icon in your Chrome toolbar</li>
+              <li>In the popup, enter your API URL: <code className="bg-white rounded px-1 py-0.5">http://localhost:3000</code> (or your deployed URL)</li>
+              <li>Click <span className="font-semibold text-slate-900">"Save"</span> to store the configuration</li>
+              <li>The extension is now ready to use</li>
+            </ol>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <h4 className="font-semibold text-slate-900 mb-3">🚀 Step 4: Run the Price Scrape</h4>
+            <ol className="list-decimal space-y-2 pl-5 text-sm text-slate-600">
+              <li>
+                Click <span className="font-semibold text-slate-900">"Open Foodex login"</span> below and sign in to Foodex manually
+              </li>
+              <li>Keep the Foodex tab open (cookies must stay active)</li>
+              <li>Click the Foodex Helper extension icon</li>
+              <li>Click <span className="font-semibold text-slate-900">"Scrape Prices"</span> button in the popup</li>
+              <li>Wait for the extension to fetch products and scrape prices (progress shown in popup)</li>
+              <li>Once complete, refresh this dashboard to see updated prices</li>
+            </ol>
+          </div>
+        </div>
+
+        <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600">
+          <div className="font-semibold text-slate-700 mb-2">📡 API Endpoints</div>
           <p className="mt-1">
             <span className="font-mono text-slate-800">GET /api/manual/foodex</span> → returns{' '}
             <span className="font-mono">{'{ id, url, selector, productName }'}</span> for every Foodex product.
@@ -263,7 +308,7 @@ function ManualGuideModal({ onClose }: { onClose: () => void }) {
           </p>
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-3">
+        <div className="mt-6 flex flex-wrap gap-3">
           <a className={linkButton} href="https://foodex.london/login" target="_blank" rel="noreferrer">
             Open Foodex login
           </a>
@@ -272,8 +317,8 @@ function ManualGuideModal({ onClose }: { onClose: () => void }) {
           </a>
         </div>
 
-        <p className="mt-3 text-xs text-slate-500">
-          Once the helper submits prices, refresh the dashboard to see updated timestamps and price history for Foodex.
+        <p className="mt-4 text-xs text-slate-500">
+          💡 <span className="font-semibold">Tip:</span> You only need to log in to Foodex once per session. The extension will reuse your cookies for all subsequent scrapes.
         </p>
       </div>
     </div>
