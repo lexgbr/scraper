@@ -20,9 +20,46 @@ const SEARCH_SUBMIT = `${SEARCH_BLOCK} button[type="submit"]`;
 const PRODUCT_CARD = '.productArea.simpleCart_shelfItem';
 const PACK_INFO_LOCATOR = '[class*="product_boxInfo"], .qtySizeText';
 const PRICE_LOCATOR = 'h1[class*="price"], .priceDetails_price__';
+const LOGIN_FORM = 'form.signin-form';
+const LOGIN_PAGE_MARKER = 'body.login-page';
+const LOGIN_ERROR_MODAL = '#loginError.show, #loginError:not([aria-hidden="true"])';
 
 function escapeRegExp(text: string) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+type OptionMeta = { kind: string; price?: number; packSize?: number };
+
+function parseOptionValue(raw: string | undefined | null): OptionMeta | undefined {
+  if (!raw) return undefined;
+  const parts = raw.split('|').map((part) => part.trim());
+  if (parts.length === 0) return undefined;
+
+  let price: number | undefined;
+  for (let i = 1; i < parts.length; i += 1) {
+    const token = parts[i];
+    if (!token) continue;
+    const parsed = Number.parseFloat(token);
+    if (!Number.isNaN(parsed)) {
+      price = parsed;
+      break;
+    }
+  }
+
+  let packSize: number | undefined;
+  const last = parts[parts.length - 1];
+  if (last) {
+    const parsedPack = Number.parseInt(last, 10);
+    if (!Number.isNaN(parsedPack)) {
+      packSize = parsedPack;
+    }
+  }
+
+  return {
+    kind: parts[0]?.toLowerCase() ?? '',
+    price,
+    packSize,
+  };
 }
 
 async function waitForPriceText(locator: ReturnType<Page['locator']>): Promise<string> {
@@ -35,21 +72,22 @@ export class MaxyWholesale extends BaseAdapter {
   private panelUrl: string = DEFAULT_PANEL_URL;
 
   async isLoggedIn(page: Page): Promise<boolean> {
-    if (PANEL_MATCHER.test(page.url()) && (await this.hasSearchControls(page))) {
-      this.rememberPanel(page.url());
-      return true;
-    }
-
     try {
-      await page.goto(this.panelUrl, { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle').catch(() => undefined);
+      if (!PANEL_MATCHER.test(page.url())) {
+        await page.goto(this.panelUrl, { waitUntil: 'domcontentloaded' });
+        await page.waitForLoadState('networkidle').catch(() => undefined);
+      }
     } catch {
       return false;
     }
 
-    if (PANEL_MATCHER.test(page.url()) && (await this.hasSearchControls(page))) {
+    if (await this.isOnPanel(page)) {
       this.rememberPanel(page.url());
       return true;
+    }
+
+    if (await this.isOnLoginPage(page)) {
+      return false;
     }
 
     const logoutLink = await page
@@ -57,6 +95,22 @@ export class MaxyWholesale extends BaseAdapter {
       .first()
       .count();
     return logoutLink > 0;
+  }
+
+  private async isOnLoginPage(page: Page): Promise<boolean> {
+    const loginForm = page.locator(LOGIN_FORM).first();
+    const loginMarker = page.locator(LOGIN_PAGE_MARKER).first();
+    return (await loginForm.count()) > 0 || (await loginMarker.count()) > 0;
+  }
+
+  private async isOnPanel(page: Page): Promise<boolean> {
+    if (!PANEL_MATCHER.test(page.url())) return false;
+    if (await this.hasSearchControls(page)) return true;
+    const wrapper = page.locator('.content-wrapper, .main-sidebar').first();
+    if ((await wrapper.count()) > 0 && !(await this.isOnLoginPage(page))) {
+      return true;
+    }
+    return false;
   }
 
   private rememberPanel(url: string | undefined) {
@@ -72,7 +126,7 @@ export class MaxyWholesale extends BaseAdapter {
 
   private async ensurePanel(page: Page) {
     for (let i = 0; i < 3; i += 1) {
-      if (await this.hasSearchControls(page)) {
+      if (await this.isOnPanel(page)) {
         this.rememberPanel(page.url());
         return;
       }
@@ -80,6 +134,11 @@ export class MaxyWholesale extends BaseAdapter {
       await page.goto(this.panelUrl, { waitUntil: 'domcontentloaded' });
       await page.waitForLoadState('networkidle').catch(() => undefined);
       await page.waitForTimeout(600);
+
+      if (await this.isOnLoginPage(page)) {
+        await page.screenshot({ path: 'maxywholesale-login-required.png', fullPage: true }).catch(() => undefined);
+        throw new Error('MaxyWholesale session expired while ensuring order panel');
+      }
     }
 
     await page.screenshot({ path: 'maxywholesale-panel-missing.png', fullPage: true }).catch(() => undefined);
@@ -101,11 +160,17 @@ export class MaxyWholesale extends BaseAdapter {
       }
     }
 
-    const user = page
-      .locator('input[type="email"], input[name="eMail"], input#eMail, input[placeholder*="mail" i]')
+    const loginForm = page.locator(LOGIN_FORM).first();
+    if ((await loginForm.count()) === 0) {
+      await page.screenshot({ path: 'maxywholesale-login-form-missing.png', fullPage: true }).catch(() => undefined);
+      throw new Error('MaxyWholesale login form not found');
+    }
+
+    const user = loginForm
+      .locator('input[name="eMail"], input#eMail, input[type="email"], input[placeholder*="mail" i]')
       .first();
-    const pass = page
-      .locator('input[type="password"], input[name="PassCode"], input#PassCode, input[placeholder*="password" i]')
+    const pass = loginForm
+      .locator('input[name="PassCode"], input#PassCode, input[type="password"], input[placeholder*="password" i]')
       .first();
 
     const userCount = await user.count();
@@ -141,14 +206,31 @@ export class MaxyWholesale extends BaseAdapter {
     }
 
     await clickTarget.click();
-    await page.waitForLoadState('networkidle').catch(() => undefined);
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(500);
 
-    await page.screenshot({ path: 'maxywholesale-after-submit.png', fullPage: true }).catch(() => undefined);
+    const errorModal = page.locator(LOGIN_ERROR_MODAL).first();
+    const loginStart = Date.now();
 
-    if (!(await this.isLoggedIn(page))) {
-      await page.screenshot({ path: 'maxywholesale-login-fail.png', fullPage: true });
-      throw new Error('MaxyWholesale login failed');
+    while (Date.now() - loginStart < 20000) {
+      if (await this.isOnPanel(page)) {
+        this.rememberPanel(page.url());
+        break;
+      }
+
+      if ((await errorModal.count()) > 0 && (await errorModal.isVisible())) {
+        const message = (
+          (await errorModal.locator('.modal-body').innerText().catch(() => 'Login failed')) ?? 'Login failed'
+        ).trim();
+        await page.screenshot({ path: 'maxywholesale-login-fail.png', fullPage: true }).catch(() => undefined);
+        throw new Error(`MaxyWholesale login failed: ${message}`);
+      }
+
+      await page.waitForTimeout(500);
+    }
+
+    if (!(await this.isOnPanel(page))) {
+      await page.screenshot({ path: 'maxywholesale-login-timeout.png', fullPage: true }).catch(() => undefined);
+      throw new Error('MaxyWholesale login did not reach the order panel');
     }
   }
 
@@ -201,68 +283,110 @@ export class MaxyWholesale extends BaseAdapter {
       throw new Error(`Product "${query}" not found on Maxy Wholesale`);
     }
 
-    const detailLink = await productCard.locator('a[href]').first().getAttribute('href');
-    if (detailLink) {
-      const target = new URL(detailLink, BASE_URL).toString();
-      await page.goto(target, { waitUntil: 'domcontentloaded' });
-    }
-
-    const priceElement = page.locator(PRICE_LOCATOR).first();
-    let packPrice = parsePriceToGBP(await waitForPriceText(priceElement)).amount;
-    let unitPrice: number | null = null;
-    let packSize: number | null = null;
-
-    const packInfo = page.locator(PACK_INFO_LOCATOR).first();
-    if (await packInfo.count()) {
-      const text = (await packInfo.innerText()).replace(/\s+/g, ' ').trim();
-      const match = text.match(/(\d+)\s*[xX]/);
-      if (match) packSize = Number(match[1]);
-    }
-
-    const unitSelect = page.locator('select#productUnit, select[name="productUnit"]').first();
-    if (await unitSelect.count()) {
-      const options = await unitSelect.locator('option').all();
-      for (const option of options) {
-        const optionValue = (await option.getAttribute('value')) ?? undefined;
-        const label = ((await option.textContent()) ?? '').trim();
-        const disabled = await option.evaluate((el) => el.hasAttribute('disabled'));
-        if (disabled) continue;
-
-        if (/box/i.test(label) || /box/i.test(optionValue ?? '')) {
-          if (optionValue) await unitSelect.selectOption(optionValue);
-          else await unitSelect.selectOption({ label });
-          await page.waitForTimeout(250);
-          packPrice = parsePriceToGBP(await waitForPriceText(priceElement)).amount;
-          if (!packSize) {
-            const sizeMatch = label.match(/(\d+)/);
-            if (sizeMatch) packSize = Number(sizeMatch[1]);
-          }
-        } else if (/unit/i.test(label) || /unit/i.test(optionValue ?? '')) {
-          if (optionValue) await unitSelect.selectOption(optionValue);
-          else await unitSelect.selectOption({ label });
-          await page.waitForTimeout(250);
-          unitPrice = parsePriceToGBP(await waitForPriceText(priceElement)).amount;
+    try {
+      const priceElement = productCard.locator(PRICE_LOCATOR).first();
+      let fallbackPrice: number | null = null;
+      if (await priceElement.count()) {
+        try {
+          fallbackPrice = parsePriceToGBP(await waitForPriceText(priceElement)).amount;
+        } catch {
+          fallbackPrice = null;
         }
       }
 
-      const boxOption = await unitSelect.locator('option').filter({ hasText: /box/i }).first();
-      if (await boxOption.count()) {
-        const val = await boxOption.getAttribute('value');
-        if (val) await unitSelect.selectOption(val);
+      const packInfo = productCard.locator(PACK_INFO_LOCATOR).first();
+      let packSize: number | null = null;
+      if (await packInfo.count()) {
+        const text = (await packInfo.innerText()).replace(/\s+/g, ' ').trim();
+        const match = text.match(/(\d+)\s*[xX]/);
+        if (match) packSize = Number(match[1]);
       }
-    }
 
-    if (unitPrice == null && packPrice != null && packSize) {
-      unitPrice = Number((packPrice / packSize).toFixed(4));
-    }
+      const unitSelect = productCard.locator('select#productUnit, select[name="productUnit"]').first();
+      if (!(await unitSelect.count())) {
+        await page
+          .screenshot({ path: 'maxywholesale-price-selector-missing.png', fullPage: true })
+          .catch(() => undefined);
+        throw new Error('MaxyWholesale price selector not found');
+      }
 
-    const amount = unitPrice ?? packPrice;
-    return {
-      amount,
-      unitLabel: unitPrice != null ? 'unit' : null,
-      packPrice: packPrice ?? null,
-      packSize: packSize ?? null,
-      packLabel: packPrice != null ? 'box' : null,
-    };
+      await unitSelect.waitFor({ state: 'visible', timeout: 15000 });
+      const optionData = await unitSelect.locator('option').evaluateAll((nodes) =>
+        nodes.map((node) => ({
+          value: node.getAttribute('value') ?? '',
+          label: (node.textContent ?? '').trim(),
+          disabled: node.hasAttribute('disabled'),
+          selected:
+            node instanceof HTMLOptionElement
+              ? node.selected
+              : node.hasAttribute('selected') || node.getAttribute('selected') === 'true',
+        })),
+      );
+
+      let packPrice: number | null = null;
+      let unitPrice: number | null = null;
+
+      for (const option of optionData) {
+        const meta = parseOptionValue(option.value);
+        const normalized = `${option.label} ${(meta?.kind ?? '')}`.toLowerCase();
+        const isBox =
+          /\bbox\b/.test(normalized) ||
+          /\bcase\b/.test(normalized) ||
+          /\bcarton\b/.test(normalized) ||
+          /\bpack\b/.test(normalized) ||
+          (meta?.kind ?? '').includes('box');
+        const isUnit =
+          /\bunit\b/.test(normalized) ||
+          /\bpcs?\b/.test(normalized) ||
+          /\bpiece\b/.test(normalized) ||
+          /\beach\b/.test(normalized) ||
+          /\bsingle\b/.test(normalized) ||
+          /\bpc\b/.test(normalized) ||
+          (meta?.kind ?? '').includes('pc');
+
+        if (!isBox && !isUnit) continue;
+
+        if (!packSize) {
+          if (meta?.packSize && Number.isFinite(meta.packSize)) {
+            packSize = Number(meta.packSize);
+          } else {
+            const sizeMatch = option.label.match(/(\d+)\s*[xX]/);
+            if (sizeMatch) packSize = Number(sizeMatch[1]);
+          }
+        }
+
+        if (isBox && meta?.price != null && (packPrice == null || option.selected)) {
+          packPrice = meta.price;
+        } else if (isUnit && meta?.price != null && (unitPrice == null || option.selected)) {
+          unitPrice = meta.price;
+        }
+      }
+
+      if (packPrice == null) {
+        packPrice = fallbackPrice;
+      }
+
+      if (unitPrice == null && packPrice != null && packSize) {
+        unitPrice = Number((packPrice / packSize).toFixed(4));
+      }
+
+      const amount = unitPrice ?? packPrice ?? fallbackPrice;
+      if (amount == null) {
+        await page
+          .screenshot({ path: 'maxywholesale-price-missing.png', fullPage: true })
+          .catch(() => undefined);
+        throw new Error('Unable to derive price from MaxyWholesale price selector');
+      }
+
+      return {
+        amount,
+        unitLabel: unitPrice != null ? 'unit' : null,
+        packPrice: packPrice ?? null,
+        packSize: packSize ?? null,
+        packLabel: packPrice != null ? 'box' : null,
+      };
+    } finally {
+      // no-op
+    }
   }
 }

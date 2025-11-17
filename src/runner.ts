@@ -1,4 +1,25 @@
-import 'dotenv/config';
+import { config as loadEnv } from 'dotenv';
+import fs from 'node:fs';
+import path from 'node:path';
+
+loadEnv();
+
+(() => {
+  const iniPath = path.resolve(process.cwd(), 'env.ini');
+  if (!fs.existsSync(iniPath)) return;
+  const text = fs.readFileSync(iniPath, 'utf8');
+  for (const line of text.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#') || !trimmed.includes('=')) continue;
+    const [rawKey, ...rest] = trimmed.split('=');
+    const key = rawKey?.trim();
+    if (!key) continue;
+    const value = rest.join('=').trim();
+    if (process.env[key] == null || process.env[key] === '') {
+      process.env[key] = value;
+    }
+  }
+})();
 import { readFile } from 'node:fs/promises';
 import type { Adapter, ProductLink, Credentials } from './types.js';
 import type { SiteId } from './lib/sites.js';
