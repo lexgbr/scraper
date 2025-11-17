@@ -20,7 +20,7 @@ type ScraperProduct = {
 
 function inferSiteId(input: any): SiteId | undefined {
   const explicit = input?.site?.id;
-  if (explicit && SITE_BY_ID.has(explicit)) {
+  if (explicit && SITE_BY_ID.has(explicit as any)) {
     return explicit as SiteId;
   }
   const fallback = input?.site?.name ? resolveSiteByName(String(input.site.name)) : undefined;

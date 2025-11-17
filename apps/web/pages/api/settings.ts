@@ -33,7 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!siteId || typeof siteId !== 'string') {
       return res.status(400).json({ ok: false, error: 'siteId is required' });
     }
-    if (!SITE_BY_ID.has(siteId)) {
+    if (!SITE_BY_ID.has(siteId as any)) {
       return res.status(400).json({ ok: false, error: `unknown siteId ${siteId}` });
     }
     if (!username || !password) {
