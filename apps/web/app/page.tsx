@@ -198,7 +198,7 @@ export default function Home() {
                       on <span className="font-medium text-indigo-600">{f.site}</span>
                     </div>
                     <div className="text-xs text-slate-500">
-                      {f.old} -> {f.new} GBP @ {new Date(f.changedAt).toLocaleString()}
+                      {f.old} {'->'} {f.new} GBP @ {new Date(f.changedAt).toLocaleString()}
                     </div>
                   </div>
                 </li>
