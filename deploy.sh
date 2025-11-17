@@ -30,7 +30,23 @@ echo -e "${GREEN}✓${NC} Running as root"
 # Install system dependencies
 echo -e "\n${YELLOW}Installing system dependencies...${NC}"
 apt update
-apt install -y nodejs npm nginx
+
+# Remove conflicting packages if they exist
+apt remove -y nodejs npm || true
+
+# Install Node.js 20 LTS using NodeSource (better for Ubuntu 24.04)
+echo -e "\n${YELLOW}Installing Node.js 20 LTS...${NC}"
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+apt install -y nodejs
+
+# Verify installation
+echo -e "\n${YELLOW}Node.js version:${NC}"
+node --version
+npm --version
+
+# Install Nginx
+echo -e "\n${YELLOW}Installing Nginx...${NC}"
+apt install -y nginx
 
 # Install PM2 globally
 echo -e "\n${YELLOW}Installing PM2...${NC}"
