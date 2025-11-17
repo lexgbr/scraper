@@ -31,12 +31,17 @@ echo -e "${GREEN}✓${NC} Running as root"
 echo -e "\n${YELLOW}Installing system dependencies...${NC}"
 apt update
 
-# Remove conflicting packages if they exist
-apt remove -y nodejs npm || true
+# Completely remove any existing Node.js/npm packages from Ubuntu repos
+echo -e "\n${YELLOW}Removing conflicting Node.js packages...${NC}"
+apt remove -y nodejs npm libnode-dev libnode72 || true
+apt autoremove -y
+apt purge -y nodejs npm || true
 
-# Install Node.js 20 LTS using NodeSource (better for Ubuntu 24.04)
-echo -e "\n${YELLOW}Installing Node.js 20 LTS...${NC}"
+# Install Node.js 20 LTS using NodeSource (includes npm)
+echo -e "\n${YELLOW}Installing Node.js 20 LTS from NodeSource...${NC}"
 curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+
+# Install only nodejs (npm is included from NodeSource)
 apt install -y nodejs
 
 # Verify installation
