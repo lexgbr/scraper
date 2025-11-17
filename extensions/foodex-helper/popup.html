@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Foodex Manual Capture</title>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        margin: 0;
+        padding: 16px;
+        min-width: 320px;
+        color: #0f172a;
+        background: #f8fafc;
+      }
+      label {
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: #475569;
+        display: block;
+        margin-bottom: 4px;
+      }
+      input {
+        width: 100%;
+        border-radius: 10px;
+        border: 1px solid #cbd5f5;
+        padding: 8px 12px;
+        font-size: 14px;
+      }
+      button {
+        width: 100%;
+        margin-top: 12px;
+        border: none;
+        border-radius: 12px;
+        padding: 10px;
+        font-size: 14px;
+        font-weight: 600;
+        color: white;
+        background: linear-gradient(135deg, #4c1d95, #6d28d9, #7c3aed);
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      .status {
+        margin-top: 12px;
+        min-height: 40px;
+        font-size: 13px;
+        color: #475569;
+      }
+      .status strong {
+        display: block;
+        color: #0f172a;
+      }
+      .footer {
+        margin-top: 16px;
+        font-size: 11px;
+        color: #94a3b8;
+        line-height: 1.4;
+      }
+      a {
+        color: #2563eb;
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <label for="base-url">Dashboard URL</label>
+    <input id="base-url" placeholder="https://dashboard.mariontrading.com" />
+    <button id="start-btn">Run Foodex Capture</button>
+    <div class="status" id="status"></div>
+    <div class="footer">
+      Keep your <a href="https://foodex.london/my-account/" target="_blank">Foodex tab</a> logged in and focused.
+      This helper will open each product URL, read the price selector, and push the results to
+      <code>/api/manual/foodex</code>.
+    </div>
+    <script src="popup.js"></script>
+  </body>
+</html>

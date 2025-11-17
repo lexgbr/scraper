@@ -45,8 +45,9 @@ export const SITE_DEFINITIONS: SiteDefinition[] = [
     id: 'foodex',
     name: 'Foodex London',
     baseUrl: 'https://foodex.london',
-    loginPath: '/my-account/',
-    defaultSelector: 'price',
+    loginPath: '/login/',
+    defaultSelector:
+      'body > div.site > div.center.main-site > section > div > form > div > section > div > table > tbody > tr > td.price',
   },
 ];
 

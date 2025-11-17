@@ -27,7 +27,7 @@ function inferSiteId(input: any): SiteId | undefined {
   return fallback?.id;
 }
 
-async function loadProducts(base: string): Promise<ScraperProduct[]> {
+async function loadProducts(base: string, siteFilter?: SiteId): Promise<ScraperProduct[]> {
   const r = await fetch(`${base}/api/products`, { cache: 'no-store' });
   if (!r.ok) throw new Error(`/api/products ${r.status}`);
   const { rows } = await r.json();
@@ -37,6 +37,7 @@ async function loadProducts(base: string): Promise<ScraperProduct[]> {
     if (!raw?.url || raw?.id == null) continue;
     const siteId = inferSiteId(raw);
     if (!siteId) continue;
+    if (siteFilter && siteId !== siteFilter) continue;
     products.push({
       id: Number(raw.id),
       name: raw.product?.name ?? 'Unknown',
@@ -53,9 +54,15 @@ async function loadProducts(base: string): Promise<ScraperProduct[]> {
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).end();
 
+  const siteRaw = (req.body?.siteId ?? req.query?.siteId) as string | undefined;
+  const siteFilter = siteRaw && SITE_BY_ID.has(siteRaw as SiteId) ? (siteRaw as SiteId) : undefined;
+  if (siteFilter === 'foodex') {
+    return res.status(400).json({ error: 'Foodex London requires the manual capture flow.' });
+  }
+
   // 1) prepare list for the scraper
   const base = process.env.SELF_BASE_URL || 'http://localhost:3000';
-  const products = await loadProducts(base);
+  const products = await loadProducts(base, siteFilter);
 
   const root = path.resolve(process.cwd(), '..', '..'); // apps/web -> repo root
   const dataPath = path.join(root, 'data', 'products.json');
@@ -63,12 +70,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   await fs.writeFile(dataPath, JSON.stringify(products, null, 2), 'utf8');
 
   const total = products.length;
-  const etaSec = total > 0 ? Math.max(30, total * 10) : null;
+  const etaSec = total > 0 ? Math.max(20, total * 8) : null;
+  const notePrefix = siteFilter ? `site:${siteFilter}` : 'all-sites';
   const run = await prisma.queryRun.create({
     data: {
       status: 'running',
       etaSec,
-      note: total ? `all-sites:${total}` : 'all-sites:empty',
+      note: total ? `${notePrefix}:${total}` : `${notePrefix}:empty`,
     },
   });
 
@@ -238,7 +246,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('[scraper] exited', code);
   });
 
-  // răspuns imediat
-  res.json({ ok: true, count: products.length });
+  // immediate response for the UI - scraper continues in background
+  res.json({ ok: true, count: products.length, siteId: siteFilter ?? null });
 }
 

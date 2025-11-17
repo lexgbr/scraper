@@ -1,4 +1,5 @@
 import { db, ensureSeed } from './_db';
+import { SITE_DEFINITIONS } from '../../../../config/sites';
 
 export default async function handler(req: any, res: any) {
   await ensureSeed();
@@ -29,12 +30,20 @@ export default async function handler(req: any, res: any) {
       }
     : null;
 
-  const lists = listsAgg.map((a) => {
-    const site = sites.find((s) => s.id === a.siteId);
+  const aggMap = new Map<number, (typeof listsAgg)[number]>();
+  for (const entry of listsAgg) {
+    aggMap.set(entry.siteId, entry);
+  }
+
+  const lists = SITE_DEFINITIONS.map((siteDef) => {
+    const siteRecord = sites.find((s) => s.name === siteDef.name);
+    const agg = siteRecord ? aggMap.get(siteRecord.id) : undefined;
     return {
-      site: site?.name || 'Site',
-      items: a._count._all,
-      updated: a._max.lastChecked || null,
+      siteId: siteDef.id,
+      site: siteDef.name,
+      items: agg?._count._all ?? 0,
+      updated: agg?._max.lastChecked || null,
+      mode: siteDef.id === 'foodex' ? 'manual' : 'auto',
     };
   });
 

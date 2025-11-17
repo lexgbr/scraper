@@ -26,47 +26,102 @@ export class Mastersale extends BaseAdapter {
   }
 
   async login(page: Page, cred: Credentials): Promise<void> {
-    await page.goto(LOGIN_URL, { waitUntil: 'domcontentloaded' });
+    const attempt = async () => {
+      await page.goto(LOGIN_URL, { waitUntil: 'domcontentloaded' });
 
-    const form = page
-      .locator('form')
-      .filter({
-        has: page.locator('button.btn.btn-primary.login-button, button[type="submit"], input[type="submit"]'),
-      })
-      .first();
+      const changeButton = page.getByRole('button', { name: /change/i }).first();
+      if (await changeButton.count()) {
+        await changeButton.click().catch(() => undefined);
+        await page.waitForTimeout(250);
+        const englishLink = page.getByRole('link', { name: /^en$/i }).first();
+        if (await englishLink.count()) {
+          await englishLink.click().catch(() => undefined);
+          await page.waitForLoadState('domcontentloaded').catch(() => undefined);
+        }
+      }
 
-    const user = form
-      .locator('input[type="email"], input[name*="email" i], input[name*="login" i], input[name*="user" i], input[type="text"]')
-      .first();
-    const pass = form.locator('input[type="password"]').first();
-    const submit = form
-      .locator('button.btn.btn-primary.login-button, button[type="submit"], input[type="submit"]')
-      .first();
+      const form = page
+        .locator('form')
+        .filter({
+          has: page.locator('button.btn.btn-primary.login-button, button[type="submit"], input[type="submit"]'),
+        })
+        .first();
 
-    await user.waitFor({ state: 'visible', timeout: 15000 });
-    await pass.waitFor({ state: 'visible', timeout: 15000 });
+      const user = form
+        .locator(
+          'input[type="email"], input[name*="email" i], input[name*="login" i], input[name*="user" i], input[type="text"]',
+        )
+        .first();
+      const pass = form.locator('input[type="password"]').first();
+      const submit = form
+        .locator('button.btn.btn-primary.login-button, button[type="submit"], input[type="submit"]')
+        .first();
 
-    await user.fill(cred.username);
-    await pass.fill(cred.password);
+      await user.waitFor({ state: 'visible', timeout: 15000 });
+      await pass.waitFor({ state: 'visible', timeout: 15000 });
 
-    if (await submit.count()) {
-      await Promise.all([page.waitForLoadState('domcontentloaded'), submit.click()]);
-    } else {
-      await pass.press('Enter');
-      await page.waitForLoadState('domcontentloaded');
+      await user.fill(cred.username);
+      await pass.fill(cred.password);
+
+      if (await submit.count()) {
+        await Promise.all([page.waitForLoadState('domcontentloaded'), submit.click()]);
+      } else {
+        await pass.press('Enter');
+        await page.waitForLoadState('domcontentloaded');
+      }
+
+      await page.waitForLoadState('networkidle').catch(() => undefined);
+      await page.waitForTimeout(2000);
+    };
+
+    for (let i = 0; i < 3; i += 1) {
+      await attempt();
+      if (await this.isLoggedIn(page)) return;
     }
 
-    if (!(await this.isLoggedIn(page))) {
-      await page.screenshot({ path: 'mastersale-login-fail.png', fullPage: true });
-      throw new Error('Mastersale login failed');
-    }
+    await page.screenshot({ path: 'mastersale-login-fail.png', fullPage: true });
+    throw new Error('Mastersale login failed');
   }
 
   async extractPrice(page: Page, link: ProductLink): Promise<PriceResult> {
-    const targetSelector = link.selector ?? '.price, span.price, [data-test=price]';
-    const locator = page.locator(targetSelector);
-    await locator.first().waitFor({ state: 'visible', timeout: 15000 });
-    const text = (await locator.first().innerText()).trim();
+    const target = link.url?.trim();
+    if (!target) throw new Error('Missing Mastersale product URL');
+
+    await page.goto(target, { waitUntil: 'domcontentloaded' });
+    await page.waitForLoadState('networkidle').catch(() => undefined);
+
+    const defaultSelector =
+      '#content > div.container.product-card-container > div > div.row.card-top-row > div.col-sm-12.col-lg-6.card-price > div.card-price-container > div.price-details-container > div:nth-child(1) > p.price-netto';
+    const provided = (link.selector ?? '').trim();
+    const targetSelector =
+      !provided || /^\.?price-netto$/i.test(provided) || provided === 'price'
+        ? defaultSelector
+        : provided;
+
+    const candidateSelectors = [
+      targetSelector,
+      'p.price-netto',
+      '.price-netto',
+      '.card-price .price-netto',
+      '.price-details-container p.price-netto',
+    ];
+
+    let text: string | null = null;
+    for (const selector of candidateSelectors) {
+      const candidate = page.locator(selector).first();
+      try {
+        await candidate.waitFor({ state: 'visible', timeout: 8000 });
+        text = (await candidate.innerText()).trim();
+        if (text) break;
+      } catch {
+        // try next selector
+      }
+    }
+
+    if (!text) {
+      throw new Error(`Mastersale price selector not found for ${link.url}`);
+    }
+
     const amount = parsePriceToGBP(text).amount;
     return { amount, unitLabel: 'unit' };
   }

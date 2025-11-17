@@ -1,27 +1,26 @@
-# SVP Scraper Demo
+# MarionTrading Scraping Tool
 
-Multi-site Playwright scraper with a Next.js UI for managing product lists, credentials, and run history. Currently supports:
+Production-ready Playwright scraper with a Next.js control center for managing product lists, credentials, and run history. Supports:
 
-| Site             | Id             | Notes                                                                 |
-|------------------|----------------|-----------------------------------------------------------------------|
-| Romprod          | `romprod`      | Direct product URLs with unit price selector                         |
-| Mastersale       | `mastersale`   | Direct URLs, standard price selector                                 |
-| Maxy Wholesale   | `maxywholesale`| Search-based flow + unit/box toggle to capture both prices           |
-| Romega Foods     | `romegafoods`  | Only publishes box price; unit price is derived from pack size text  |
-| Foodex London    | `foodex`       | Similar to Romega; supports pack info ribbon and selector            |
-
+| Site           | Id             | Notes                                                                 |
+|----------------|----------------|-----------------------------------------------------------------------|
+| Romprod        | `romprod`      | Direct product URLs with unit price selector                         |
+| Mastersale     | `mastersale`   | Direct URLs, standard price selector                                 |
+| Maxy Wholesale | `maxywholesale`| Search-based flow + unit/box toggle to capture both prices           |
+| Romega Foods   | `romegafoods`  | Only shows box price; adapter derives unit price from pack text      |
+| Foodex London  | `foodex`       | Requires manual session; helper extension reuses user browser        |
 
 ## Project Layout
 
 ```
 .
-├── apps/web                 # Next.js demo UI (dashboard, products, price lists, settings)
-├── packages/db              # Prisma schema + migrations
-├── src                      # Scraper runtime (runner, adapters, Playwright helpers)
-├── data                     # Generated products.json (input for runner)
-└── .state                   # Stored Playwright authentication states + creds.json
+|- apps/web                 # Next.js UI (dashboard, products, price lists, settings, API routes)
+|- packages/db              # Prisma schema + migrations
+|- src                      # Scraper runtime (runner, adapters, Playwright helpers)
+|- data                     # Generated products.json passed to the runner
+|- extensions/foodex-helper # Chrome/Chromium helper for the Foodex manual flow
+`- .state                   # Stored Playwright storage states + creds.json
 ```
-
 
 ## Prerequisites
 
@@ -29,11 +28,10 @@ Multi-site Playwright scraper with a Next.js UI for managing product lists, cred
 - npm 10+ (11 recommended)
 - Playwright browsers (installed automatically via `npm install`)
 
-
 ## 1. Install dependencies
 
 ```bash
-# root (scraper runtime)
+# repo root (scraper runtime)
 npm install
 
 # Next.js UI
@@ -41,20 +39,18 @@ cd apps/web
 npm install
 ```
 
-The root `npm install` triggers the Prisma generate step and installs Playwright browsers.
-
+`npm install` at the root triggers Prisma generate and downloads the Playwright browser bundles.
 
 ## 2. Database
 
-SQLite lives in `packages/data/demo.db`. To recreate/migrate:
+SQLite lives in `packages/data/demo.db` (default file name). To recreate/migrate:
 
 ```bash
 cd packages/db
-npx prisma migrate dev --name init    # or the latest migration file
+npx prisma migrate dev --name init  # or the latest migration file
 ```
 
-> The `ensureSeed()` helper (called by `/api/home`) inserts Romprod + one sample product if the DB is empty.
-
+> `ensureSeed()` (called by `/api/home`) inserts Romprod + one sample product if the DB is empty. Set `SEED_DEMO=false` in `.env` once you no longer want that fixture.
 
 ## 3. Environment variables
 
@@ -78,13 +74,12 @@ ROMEGAFOODS_PASSWORD=...
 FOODEX_USERNAME=...
 FOODEX_PASSWORD=...
 
-# Optional: restrict runs to one site without CLI flag
-SCRAPER_SITE=
-# Optional: tweak login concurrency (kept at 1 to avoid OTP issues)
-SCRAPER_CONCURRENCY=1
+# Optional:
+SCRAPER_SITE=            # restricts runner to one site
+SCRAPER_CONCURRENCY=1    # number of simultaneous Playwright logins
 ```
 
-Authentication data saved via the UI ends up in `.state/creds.json`. Playwright storage state per site is written to `.state/<siteId>.json`.
+Credentials saved via the UI are written to `.state/creds.json`. Playwright storage states live in `.state/<siteId>.json` and are reused between runs.
 
 ### Next.js UI (`apps/web/.env.local`)
 
@@ -92,84 +87,102 @@ Authentication data saved via the UI ends up in `.state/creds.json`. Playwright 
 SELF_BASE_URL=http://localhost:3000
 ```
 
-Set this when running the UI behind a tunnel or non-default port so `/api/run` can call itself correctly.
+Set this if the UI is exposed via another host or tunnel so `/api/run` can call itself correctly.
 
-
-## 4. Running the demo UI
+## 4. Running the UI
 
 ```bash
 cd apps/web
-npm run dev      # listens on http://localhost:3000
+npm run dev   # http://localhost:3000
 ```
 
 Key pages:
 
-- `/` – dashboard (status tiles, change feed, per-site cards, run button)
-- `/products` – add/remove products per site, inline confirmation modal
-- `/settings` – manage credentials per site (user/password/TOTP)
-
+- `/` - dashboard (status tiles, change feed, per-site cards, run buttons)
+- `/products` - add/remove products per site, inline confirmation modal
+- `/settings` - manage credentials per site (user/password/TOTP)
+- `/pricelists` - snapshot of the latest scraped price grouped by site
 
 ## 5. Using the scraper
 
-The runner reads `data/products.json`. `/api/run` regenerates this file automatically from the DB, but you can also run the scraper standalone from the CLI.
+The runner reads `data/products.json`. `/api/run` regenerates this file automatically from the DB before spawning the Node process, but you can also run it manually.
 
 ### Populate products via UI
 
 1. Go to `/products`.
-2. Pick an existing product (or type a new name) in the “Add / update product links” form.
-3. Paste the site-specific URLs in the rows provided—leave blank for sites that don’t stock the item.
-4. Click **Save links** to create/update every marketplace entry in one go. You can revisit the form later to add more sites for the same product.
-5. For catalogue-only stores (e.g. Maxy Wholesale), simply enable the site and optionally override the search query—the scraper will search by product name if you leave it blank.
-6. Expand any product in the list to review or remove individual site links.
-7. Visit `/pricelists` any time to see the latest scraped prices grouped by site.
-8. Once you move past the default sample data, set `SEED_DEMO=false` in `.env` (and restart the servers) so the demo Romprod product isn’t re-created after deletions.
+2. Pick an existing product (or type a new name) in the **Add / update product links** form.
+3. Enable each marketplace you care about and paste either the direct product URL or (for catalogue-only sites) the search query.
+4. Click **Save links** to create/update every site entry in one go. Revisit anytime to add other marketplaces for the same product.
+5. Expand any product row to edit or remove individual site links.
+6. `/pricelists` shows the last scraped price for every product/site combination.
 
 ### Trigger from the UI
 
-Open `/` and click **Run scraper**. The API will:
+Open `/` and click **Run scraper** (global) or the per-site **Scrape now** buttons. `/api/run` will:
 
-1. Call `/api/products`, write `data/products.json`.
-2. Spawn `node src/runner.ts`.
-3. Stream JSON lines, updating `ProductLink`, `PriceSnapshot`, `PriceChange`, and `QueryRun`.
+1. Call `/api/products` and write `data/products.json`.
+2. Spawn `node src/runner.ts` (filtered to a single site if `siteId` was provided).
+3. Stream newline-delimited JSON; each entry updates `ProductLink`, `PriceSnapshot`, `PriceChange`, and `QueryRun` rows.
 
-### CLI (single site testing)
+### CLI (single-site testing)
 
 ```bash
-# Run every site in products.json
+# Run every site listed in data/products.json
 npm run scrape
 
 # Only Romprod
 npm run scrape -- --site romprod
 
-# Reads SCRAPER_SITE if no flag is provided
+# Respect SCRAPER_SITE environment variable
 SCRAPER_SITE=foodex npm run scrape
 ```
 
-Output is newline-delimited JSON, one record per product. Errors are emitted on stderr as `{"type":"scrape-error", ...}`.
+Output is NDJSON. Errors from adapters are logged as `{"type":"scrape-error", ...}` on stderr.
 
+## 6. Foodex manual workflow
 
-## 6. Multi-price data
+Foodex hides behind a Cloudflare human-check, so automation has to reuse your real browser session.
 
-Each scrape now records:
+1. Log in to https://foodex.london/login manually (solve the verification) and keep that tab open.
+2. On the dashboard, use the Foodex card's **View tutorial** button if you need a refresher.
+3. Load the helper found in `extensions/foodex-helper` via `chrome://extensions` and click **Load unpacked** (works in Chrome, Edge, Arc, etc.).
+4. Enter your dashboard base URL (e.g., `http://localhost:3000`) and click **Run Foodex Capture**.
+5. The helper fetches `GET /api/manual/foodex`, opens each stored product URL in the active tab, reads the configured selector, and finally `POST`s `{ entries: [...] }` back to `/api/manual/foodex`.
+6. Refresh `/` or `/pricelists` to see the updated timestamps and price history.
 
-- `amount` — last unit price (or derived per-unit)
+**Manual API reference**
+
+```bash
+curl -X POST "$BASE/api/manual/foodex" \
+  -H "content-type: application/json" \
+  -d '{ "entries": [{ "id": 10, "unitPrice": 12.34, "packPrice": 48.99, "packSize": 4 }] }'
+```
+
+The extension popup provides progress updates; once it finishes, the dashboard shows Foodex changes alongside the automated adapters.
+
+## 7. Multi-price data
+
+Each scrape records:
+
+- `amount` - last unit price (or derived per-unit)
 - `packPrice`, `packSize`, `packLabel`
 - `unitLabel`
 
-These fields flow through to:
+These values propagate to:
 
-- `ProductLink` (`lastPriceUnit`, `lastPricePack`, etc.)
-- `PriceSnapshot` table
-- `/api/products` response, surfaced on `/products` page
+- `ProductLink` (`lastPriceUnit`, `lastPricePack`, `packSize`, etc.)
+- `PriceSnapshot` and `PriceChange` tables
+- `/api/products`, `/pricelists`, and the dashboard feed
 
-If a site only exposes box price (e.g., Romega Foods), the adapter derives unit price using the “12 x 80g” ribbon. Maxy Wholesale searches by name, opens the matching card, and toggles the unit/box dropdown you highlighted to capture both values directly.
-
+If a site only exposes box price (e.g., Romega Foods), the adapter derives unit price from ribbons such as 12 x 80g. Maxy Wholesale toggles the unit/box dropdown and captures both values directly.
 
 ## Troubleshooting
 
-- **Login failures** – check `.state/<site>.json` and `.state/creds.json`. Regenerate by updating credentials and re-running.
-- **Playwright timeouts** – selectors live in `config/sites.ts` and per-product overrides. Adjust there or edit the specific adapter.
-- **Database locked** – stop any running `npm run dev` instance before running CLI migrations.
-- **SCRAPER_SITE ignored** – ensure you don’t pass positional args; `npm run scrape romprod` treats `romprod` as `--` value. Use `npm run scrape -- --site romprod`.
+- **Login failures** - check `.state/<site>.json` and `.state/creds.json`. Update credentials or delete the storage state to re-auth.
+- **Playwright timeouts** - adjust selectors in `config/sites.ts` or the specific adapter.
+- **Database locked** - stop any running `npm run dev` before applying migrations or CLI scrapes.
+- **SCRAPER_SITE ignored** - ensure you pass `-- --site romprod`. `npm run scrape romprod` treats `romprod` as a positional arg.
+- **Foodex helper cant reach the dashboard** - confirm the popup base URL matches your deployment and, if necessary, expand the host permissions in `extensions/foodex-helper/manifest.json`.
 
-Feel free to extend `config/sites.ts` with new marketplaces; register a new adapter in `src/adapters`, add it to the `adapters` map inside `src/runner.ts`, and the UI will pick it up automatically.
+Extend `config/sites.ts` with new marketplaces, add a corresponding adapter under `src/adapters`, register it in `src/runner.ts`, and the UI will pick it up automatically.
+

@@ -129,7 +129,9 @@ async function runForSite(siteId: SiteId, links: ProductLink[]): Promise<void> {
     }
   } finally {
     try {
-      await writeStorageState(siteId, await ctx.storageState());
+      if (siteId !== 'maxywholesale') {
+        await writeStorageState(siteId, await ctx.storageState());
+      }
     } catch {
       // ignore persistence errors
     }

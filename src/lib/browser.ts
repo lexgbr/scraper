@@ -2,7 +2,8 @@ import { chromium, type BrowserContext } from 'playwright';
 import { readStorageState } from './storage.js';
 
 export async function newContext(siteId: string): Promise<BrowserContext> {
-  const state = await readStorageState(siteId);
+  const shouldUseStoredState = siteId !== 'maxywholesale';
+  const state = shouldUseStoredState ? await readStorageState(siteId) : undefined;
   const options: any = {
     headless: false,
     slowMo: 150,
