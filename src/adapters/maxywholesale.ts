@@ -35,7 +35,7 @@ export class MaxyWholesale extends BaseAdapter {
   private panelUrl: string = DEFAULT_PANEL_URL;
 
   async isLoggedIn(page: Page): Promise<boolean> {
-    if (PANEL_MATCHER.test(page.url())) {
+    if (PANEL_MATCHER.test(page.url()) && (await this.hasSearchControls(page))) {
       this.rememberPanel(page.url());
       return true;
     }
@@ -47,15 +47,16 @@ export class MaxyWholesale extends BaseAdapter {
       return false;
     }
 
-    if (PANEL_MATCHER.test(page.url())) {
+    if (PANEL_MATCHER.test(page.url()) && (await this.hasSearchControls(page))) {
       this.rememberPanel(page.url());
       return true;
     }
 
-    const logoutLink = page
+    const logoutLink = await page
       .locator('a[href*="log-out"], a[href*="logout"], a:has-text("Log out"), a:has-text("Logout")')
-      .first();
-    return (await logoutLink.count()) > 0;
+      .first()
+      .count();
+    return logoutLink > 0;
   }
 
   private rememberPanel(url: string | undefined) {
@@ -70,18 +71,15 @@ export class MaxyWholesale extends BaseAdapter {
   }
 
   private async ensurePanel(page: Page) {
-    if (await this.hasSearchControls(page)) {
-      this.rememberPanel(page.url());
-      return;
-    }
+    for (let i = 0; i < 3; i += 1) {
+      if (await this.hasSearchControls(page)) {
+        this.rememberPanel(page.url());
+        return;
+      }
 
-    await page.goto(this.panelUrl, { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle').catch(() => undefined);
-    await page.waitForTimeout(400);
-
-    if (await this.hasSearchControls(page)) {
-      this.rememberPanel(page.url());
-      return;
+      await page.goto(this.panelUrl, { waitUntil: 'domcontentloaded' });
+      await page.waitForLoadState('networkidle').catch(() => undefined);
+      await page.waitForTimeout(600);
     }
 
     await page.screenshot({ path: 'maxywholesale-panel-missing.png', fullPage: true }).catch(() => undefined);
@@ -91,7 +89,9 @@ export class MaxyWholesale extends BaseAdapter {
   async login(page: Page, cred: Credentials): Promise<void> {
     await page.goto(ACCOUNT_URL, { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('networkidle').catch(() => undefined);
-    await page.waitForTimeout(600);
+    await page.waitForTimeout(1000);
+
+    await page.screenshot({ path: 'maxywholesale-login-start.png', fullPage: true }).catch(() => undefined);
 
     const categoryInput = page.locator('#CategoryID');
     if (await categoryInput.count()) {
@@ -101,48 +101,55 @@ export class MaxyWholesale extends BaseAdapter {
       }
     }
 
-    const emailBox = page.getByRole('textbox', { name: /e-mail/i });
-    const passBox = page.getByRole('textbox', { name: /password/i });
-    const user = (await emailBox.count()) ? emailBox : page.locator(USER_INPUT).first();
-    const pass = (await passBox.count()) ? passBox : page.locator(PASS_INPUT).first();
+    const user = page
+      .locator('input[type="email"], input[name="eMail"], input#eMail, input[placeholder*="mail" i]')
+      .first();
+    const pass = page
+      .locator('input[type="password"], input[name="PassCode"], input#PassCode, input[placeholder*="password" i]')
+      .first();
+
+    const userCount = await user.count();
+    const passCount = await pass.count();
+
+    if (userCount === 0 || passCount === 0) {
+      await page.screenshot({ path: 'maxywholesale-inputs-not-found.png', fullPage: true });
+      throw new Error(`Login inputs not found - email: ${userCount}, password: ${passCount}`);
+    }
 
     await user.waitFor({ state: 'visible', timeout: 15000 });
     await pass.waitFor({ state: 'visible', timeout: 15000 });
 
+    await user.click();
+    await page.waitForTimeout(100);
     await user.fill(cred.username);
-    await pass.fill(cred.password);
+    await page.waitForTimeout(300);
 
-    const submitButton = page.getByRole('button', { name: /^sign in$/i }).first();
-    const fallbackSubmit = page.locator(SUBMIT_BUTTON).first();
+    await pass.click();
+    await page.waitForTimeout(100);
+    await pass.fill(cred.password);
+    await page.waitForTimeout(300);
+
+    await page.screenshot({ path: 'maxywholesale-login-filled.png', fullPage: true }).catch(() => undefined);
+
+    const submitButton = page.getByRole('button', { name: /sign in/i }).first();
+    const fallbackSubmit = page.locator('button[type="submit"], input[type="submit"]').first();
     const clickTarget = (await submitButton.count()) ? submitButton : fallbackSubmit;
 
-    const loginResponse = page
-      .waitForResponse(
-        (response) =>
-          response.url().includes('__coreAction.php') && response.request().method() === 'POST',
-      )
-      .catch(() => undefined);
-
-    if (clickTarget) {
-      await Promise.all([loginResponse, clickTarget.click()]);
-    } else {
-      await Promise.all([loginResponse, pass.press('Enter')]);
+    if ((await clickTarget.count()) === 0) {
+      await page.screenshot({ path: 'maxywholesale-no-submit.png', fullPage: true });
+      throw new Error('Submit button not found');
     }
 
-    try {
-      await page.waitForURL((target) => PANEL_MATCHER.test(target.href), { timeout: 45000 });
-    } catch {
-      // fall through - verification below will surface error
-    }
+    await clickTarget.click();
+    await page.waitForLoadState('networkidle').catch(() => undefined);
+    await page.waitForTimeout(1500);
 
-    if (!PANEL_MATCHER.test(page.url())) {
+    await page.screenshot({ path: 'maxywholesale-after-submit.png', fullPage: true }).catch(() => undefined);
+
+    if (!(await this.isLoggedIn(page))) {
       await page.screenshot({ path: 'maxywholesale-login-fail.png', fullPage: true });
       throw new Error('MaxyWholesale login failed');
     }
-
-    this.rememberPanel(page.url());
-    await page.waitForLoadState('networkidle').catch(() => undefined);
-    await page.waitForTimeout(400);
   }
 
   async extractPrice(page: Page, link: ProductLink): Promise<PriceResult> {
