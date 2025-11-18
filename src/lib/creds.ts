@@ -11,11 +11,16 @@ export async function loadCredsFor(siteId: string): Promise<Credentials> {
   if (U && P) return { username: U, password: P, totpSecret: T };
 
   try {
+    console.log(`[creds] Loading for ${siteId} from ${CREDS_PATH}`);
     const raw = await fs.readFile(CREDS_PATH, 'utf8');
     const all = JSON.parse(raw) as Record<string, Credentials>;
+    console.log(`[creds] Available sites:`, Object.keys(all));
     const c = all[siteId];
+    console.log(`[creds] Found for ${siteId}:`, c ? 'yes' : 'no');
     if (c?.username && c?.password) return c;
-  } catch {}
+  } catch (err) {
+    console.error(`[creds] Error loading for ${siteId}:`, err);
+  }
   throw new Error(`Missing credentials for ${siteId}`);
 }
 
