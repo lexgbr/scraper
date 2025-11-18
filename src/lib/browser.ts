@@ -5,7 +5,7 @@ export async function newContext(siteId: string): Promise<BrowserContext> {
   const shouldUseStoredState = siteId !== 'maxywholesale';
   const state = shouldUseStoredState ? await readStorageState(siteId) : undefined;
   const options: any = {
-    headless: false,
+    headless: true,
     slowMo: 150,
     viewport: { width: 1366, height: 768 },
     locale: 'en-GB',
