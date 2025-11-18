@@ -4,6 +4,7 @@ import type { SiteId } from '../../../../config/sites';
 import { SITE_DEFINITIONS, SITE_BY_ID, resolveSiteByName } from '../../../../config/sites';
 import Card from '../../components/ui/card';
 import Badge from '../../components/ui/badge';
+import { apiUrl } from '../../lib/api';
 
 type ApiRow = {
   id: number;
@@ -30,7 +31,7 @@ export default function PriceListsPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const response = await fetch('/api/products');
+        const response = await fetch(apiUrl('/api/products'));
         const data = await response.json();
         const normalized: UiRow[] = (data.rows as ApiRow[]).map((row) => {
           const resolvedId =

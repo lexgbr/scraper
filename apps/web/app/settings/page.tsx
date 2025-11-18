@@ -4,6 +4,7 @@ import type { SiteId } from '../../../../config/sites';
 import { SITE_DEFINITIONS, SITE_BY_ID } from '../../../../config/sites';
 import Card from '../../components/ui/card';
 import Button from '../../components/ui/button';
+import { apiUrl } from '../../lib/api';
 
 type CredView = { username?: string; hasPassword?: boolean; hasTotp?: boolean };
 
@@ -17,7 +18,7 @@ export default function SettingsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const load = async () => {
-    const res = await fetch('/api/settings');
+    const res = await fetch(apiUrl('/api/settings'));
     const data = await res.json();
     setView(data.creds || {});
   };
@@ -42,7 +43,7 @@ export default function SettingsPage() {
   const save = async () => {
     setIsSubmitting(true);
     try {
-      await fetch('/api/settings', {
+      await fetch(apiUrl('/api/settings'), {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(form),

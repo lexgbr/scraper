@@ -1,0 +1,10 @@
+# Connect to your VPS and run these commands:
+
+# 1. Download the deployment script
+curl -o deploy.sh https://raw.githubusercontent.com/lexgbr/scraper/main/deploy.sh
+
+# 2. Make it executable
+chmod +x deploy.sh
+
+# 3. Run the deployment script
+sudo ./deploy.sh

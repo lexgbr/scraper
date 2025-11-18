@@ -1,18 +1,10 @@
 [
   {
-    "id": 10,
-    "name": "Bake Rolls Garlic",
-    "siteId": "maxywholesale",
-    "url": "https://maxywholesale.com/",
-    "selector": "select#productUnit",
-    "searchQuery": "Bake Rolls Garlic"
-  },
-  {
     "id": 11,
     "name": "Bake Rolls Garlic",
     "siteId": "romegafoods",
     "url": "https://romegafoods.co.uk/product/7-days-bake-rolls-cu-usturoi-12535",
-    "selector": null,
+    "selector": "h1[class*=\"priceDetails_price\"]",
     "searchQuery": null
   }
 ]

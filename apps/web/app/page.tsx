@@ -5,6 +5,7 @@ import Card from '../components/ui/card';
 import Button from '../components/ui/button';
 import Progress from '../components/ui/progress';
 import Badge from '../components/ui/badge';
+import { apiUrl } from '../lib/api';
 
 type HomeStatus = {
   lastRun?: string;
@@ -37,7 +38,7 @@ export default function Home() {
   const [showFoodexGuide, setShowFoodexGuide] = useState(false);
 
   const refresh = async () => {
-    const response = await fetch('/api/home');
+    const response = await fetch(apiUrl('/api/home'));
     const data = await response.json();
     setStatus(data.status ?? null);
     setFeed(data.feed ?? []);
@@ -53,7 +54,7 @@ export default function Home() {
   const triggerRun = async (siteId?: SiteId) => {
     setActiveTrigger(siteId ?? 'all');
     try {
-      await fetch('/api/run', {
+      await fetch(apiUrl('/api/run'), {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(siteId ? { siteId } : {}),

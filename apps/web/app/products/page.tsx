@@ -5,6 +5,7 @@ import { SITE_DEFINITIONS, SITE_BY_ID, resolveSiteByName } from '../../../../con
 import Card from '../../components/ui/card';
 import Button from '../../components/ui/button';
 import Badge from '../../components/ui/badge';
+import { apiUrl } from '../../lib/api';
 
 type ApiRow = {
   id: number;
@@ -48,7 +49,7 @@ export default function ProductsPage() {
   const [confirmRow, setConfirmRow] = useState<UiRow | null>(null);
 
   const load = async () => {
-    const response = await fetch('/api/products');
+    const response = await fetch(apiUrl('/api/products'));
     const data = await response.json();
     const normalized: UiRow[] = (data.rows as ApiRow[]).map((row) => {
       const resolvedId =
@@ -133,7 +134,7 @@ export default function ProductsPage() {
 
     setIsSaving(true);
     try {
-      await fetch('/api/products', {
+      await fetch(apiUrl('/api/products'), {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
@@ -152,7 +153,7 @@ export default function ProductsPage() {
   };
 
   const confirmDelete = async (id: number) => {
-    await fetch(`/api/products?id=${id}`, { method: 'DELETE' });
+    await fetch(apiUrl(`/api/products?id=${id}`), { method: 'DELETE' });
     setConfirmRow(null);
     await load();
   };
