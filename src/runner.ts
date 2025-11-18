@@ -27,6 +27,7 @@ import { newContext } from './lib/browser.js';
 import { writeStorageState } from './lib/storage.js';
 import { formatGBP } from './lib/price.js';
 import { SITE_BY_ID } from './lib/sites.js';
+import { loadCredsFor } from './lib/creds.js';
 import { Romprod } from './adapters/romprod.js';
 import { Mastersale } from './adapters/mastersale.js';
 import { MaxyWholesale } from './adapters/maxywholesale.js';
@@ -41,15 +42,7 @@ const adapters: Record<SiteId, Adapter> = {
   foodex: new FoodexLondon(),
 };
 
-function envCreds(siteId: SiteId): Credentials {
-  const username = process.env[`${siteId.toUpperCase()}_USERNAME`];
-  const password = process.env[`${siteId.toUpperCase()}_PASSWORD`];
-  const totpSecret = process.env[`${siteId.toUpperCase()}_TOTP_SECRET`];
-  if (!username || !password) {
-    throw new Error(`Missing credentials for ${siteId}`);
-  }
-  return { username, password, totpSecret };
-}
+// Removed envCreds - now using loadCredsFor from creds.ts
 
 function parseSiteFilter(): SiteId | undefined {
   const args = process.argv.slice(2);
@@ -95,7 +88,7 @@ async function runForSite(siteId: SiteId, links: ProductLink[]): Promise<void> {
       loggedIn = true;
     } else {
       try {
-        await adapter.login(page, envCreds(siteId));
+        await adapter.login(page, await loadCredsFor(siteId));
         loggedIn = true;
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
