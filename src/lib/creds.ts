@@ -3,6 +3,7 @@ import path from 'node:path';
 import type { Credentials } from '../types.js';
 
 const CREDS_PATH = path.join(process.cwd(), '.state', 'creds.json');
+console.log(`[creds] CREDS_PATH initialized as: ${CREDS_PATH}`);
 
 export async function loadCredsFor(siteId: string): Promise<Credentials> {
   const U = process.env[`${siteId.toUpperCase()}_USERNAME`];
