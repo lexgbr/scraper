@@ -13,7 +13,8 @@ module.exports = {
     env: {
       NODE_ENV: 'production',
       PORT: 3001,
-      NEXT_PUBLIC_BASE_PATH: '/scraper'
+      NEXT_PUBLIC_BASE_PATH: '/scraper',
+      SELF_BASE_URL: 'http://localhost:3001/scraper'
     }
   }]
 };
