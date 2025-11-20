@@ -227,13 +227,15 @@ export default function ProductsPage() {
                     </a>
                   </label>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <input
-                      className={inputClass}
-                      placeholder={`${site.name} product URL`}
-                      value={state.url}
-                      disabled={!state.enabled || isSearchMode}
-                      onChange={(event) => handleLinkChange(site.id, 'url', event.target.value)}
-                    />
+                    {!isSearchMode && (
+                      <input
+                        className={inputClass}
+                        placeholder={`${site.name} product URL`}
+                        value={state.url}
+                        disabled={!state.enabled}
+                        onChange={(event) => handleLinkChange(site.id, 'url', event.target.value)}
+                      />
+                    )}
                     {isSearchMode && (
                       <input
                         className={inputClass}
