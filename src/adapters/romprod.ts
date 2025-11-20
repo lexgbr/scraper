@@ -7,7 +7,7 @@ import { resolveSiteById } from '../lib/sites.js';
 const SITE = resolveSiteById('romprod');
 const BASE_URL = SITE?.baseUrl ?? 'https://romprod.uk';
 const ACCOUNT_URL = new URL(SITE?.loginPath ?? '/my-account/', BASE_URL).toString();
-const DEFAULT_SELECTOR = SITE?.defaultSelector ?? '.elementor-widget-woocommerce-product-price p span, p.price span, span.woocommerce-Price-amount';
+const DEFAULT_SELECTOR = SITE?.defaultSelector ?? '.elementor-widget-woocommerce-product-price span.woocommerce-Price-amount bdi, p.price span.woocommerce-Price-amount bdi, span.woocommerce-Price-amount bdi';
 
 export class Romprod extends BaseAdapter {
   siteId = 'romprod' as const;
