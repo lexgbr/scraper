@@ -53,10 +53,42 @@ export class Romprod extends BaseAdapter {
   }
 
   async extractPrice(page: Page, link: ProductLink): Promise<PriceResult> {
+    if (!link.url) {
+      throw new Error('Missing Romprod product URL');
+    }
+
+    await page.goto(link.url, { waitUntil: 'domcontentloaded' });
+    await page.waitForLoadState('networkidle').catch(() => undefined);
+
     const selector = link.selector ?? DEFAULT_SELECTOR;
-    const element = page.locator(selector).first();
-    await element.waitFor({ state: 'visible', timeout: 15000 });
-    const text = (await element.innerText()).trim();
+    const fallbackSelectors = [
+      selector,
+      '.price span[class*="amount"]',
+      '.summary .price span[class*="amount"]',
+      '.woocommerce-Price-amount',
+      'span.price',
+    ];
+    let text: string | null = null;
+    for (const candidate of fallbackSelectors) {
+      const element = page.locator(candidate).first();
+      try {
+        await element.waitFor({ state: 'attached', timeout: 5000 });
+        await element.scrollIntoViewIfNeeded().catch(() => undefined);
+        text = await element.evaluate((el) => {
+          const bdi = el.querySelector('bdi');
+          if (bdi && bdi.textContent?.trim()) return bdi.textContent.trim();
+          if (el.textContent?.trim()) return el.textContent.trim();
+          return '';
+        });
+        if (text) break;
+      } catch {
+        // try next candidate
+      }
+    }
+    if (!text) {
+      await page.screenshot({ path: 'romprod-price-missing.png', fullPage: true }).catch(() => undefined);
+      throw new Error('Unable to find price element on Romprod product page');
+    }
     const amount = parsePriceToGBP(text).amount;
     return { amount, unitLabel: 'unit' };
   }
