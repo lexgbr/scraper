@@ -42,6 +42,7 @@ const createInitialLinkInputs = (): Record<SiteId, LinkInputState> =>
 export default function ProductsPage() {
   const [rows, setRows] = useState<UiRow[]>([]);
   const [name, setName] = useState('');
+  const [ourPrice, setOurPrice] = useState('');
   const [selectedProductId, setSelectedProductId] = useState<number | ''>('');
   const [linkInputs, setLinkInputs] = useState<Record<SiteId, LinkInputState>>(createInitialLinkInputs);
   const [filterSite, setFilterSite] = useState<SiteId | 'all'>('all');
@@ -109,6 +110,7 @@ export default function ProductsPage() {
     if (!value) {
       setSelectedProductId('');
       setName('');
+      setOurPrice('');
       return;
     }
     const id = Number(value);
@@ -145,6 +147,7 @@ export default function ProductsPage() {
       });
       setLinkInputs(createInitialLinkInputs());
       if (!selectedProductId) setName('');
+      setOurPrice('');
       setSelectedProductId('');
       await load();
     } finally {
@@ -181,7 +184,7 @@ export default function ProductsPage() {
             </p>
           </div>
 
-          <div className="grid gap-3 lg:grid-cols-4">
+          <div className="grid gap-3 lg:grid-cols-5">
             <select
               className={inputClass}
               value={selectedProductId}
@@ -200,6 +203,15 @@ export default function ProductsPage() {
               value={name}
               disabled={!!selectedProductId}
               onChange={(event) => setName(event.target.value)}
+            />
+            <input
+              className={inputClass}
+              placeholder="Our Price (GBP)"
+              type="number"
+              step="0.01"
+              min="0"
+              value={ourPrice}
+              onChange={(event) => setOurPrice(event.target.value)}
             />
           </div>
 
