@@ -26,7 +26,7 @@ type UiRow = ApiRow & { preferredLabel: string };
 type ProductRow = {
   productId: number;
   productName: string;
-  suppliers: Map<string, { unitPrice: number | null; packPrice: number | null; lastChecked: string | null }>;
+  suppliers: Map<string, { unitPrice: number | null; packPrice: number | null; lastChecked: string | null; url: string | null }>;
   trend: 'up' | 'down' | 'stable';
 };
 
@@ -80,6 +80,7 @@ export default function PriceListsPage() {
         unitPrice: row.lastPriceUnit ?? null,
         packPrice: row.lastPricePack ?? null,
         lastChecked: row.lastChecked ?? null,
+        url: row.url ?? null,
       });
     }
 
@@ -188,14 +189,30 @@ export default function PriceListsPage() {
                           return (
                             <td key={supplier} className="px-4 py-3 text-right align-top">
                               {prices ? (
-                                <div className="space-y-1">
-                                  <div className="font-semibold text-slate-700">
-                                    {prices.unitPrice != null ? `${prices.unitPrice.toFixed(2)} GBP` : '--'}
+                                prices.url ? (
+                                  <a
+                                    href={prices.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="block space-y-1 hover:opacity-75 transition"
+                                  >
+                                    <div className="font-semibold text-indigo-600 underline decoration-indigo-200 underline-offset-2">
+                                      {prices.unitPrice != null ? `${prices.unitPrice.toFixed(2)} GBP` : '--'}
+                                    </div>
+                                    <div className="text-xs text-slate-500">
+                                      {prices.packPrice != null ? `Pack: ${prices.packPrice.toFixed(2)} GBP` : ''}
+                                    </div>
+                                  </a>
+                                ) : (
+                                  <div className="space-y-1">
+                                    <div className="font-semibold text-slate-700">
+                                      {prices.unitPrice != null ? `${prices.unitPrice.toFixed(2)} GBP` : '--'}
+                                    </div>
+                                    <div className="text-xs text-slate-500">
+                                      {prices.packPrice != null ? `Pack: ${prices.packPrice.toFixed(2)} GBP` : ''}
+                                    </div>
                                   </div>
-                                  <div className="text-xs text-slate-500">
-                                    {prices.packPrice != null ? `Pack: ${prices.packPrice.toFixed(2)} GBP` : ''}
-                                  </div>
-                                </div>
+                                )
                               ) : (
                                 <span className="text-slate-400">--</span>
                               )}
