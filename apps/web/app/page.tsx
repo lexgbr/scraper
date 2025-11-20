@@ -5,7 +5,7 @@ import Card from '../components/ui/card';
 import Button from '../components/ui/button';
 import Progress from '../components/ui/progress';
 import Badge from '../components/ui/badge';
-import { apiUrl } from '../lib/api';
+import { apiUrl, getBasePath } from '../lib/api';
 
 type HomeStatus = {
   lastRun?: string;
@@ -252,7 +252,7 @@ function ManualGuideModal({ onClose }: { onClose: () => void }) {
             <p className="text-sm text-slate-600 mb-3">
               Download the Foodex Helper Chrome extension from your project directory.
             </p>
-            <a className={downloadButton} href="/extensions/foodex-helper.zip" download="foodex-helper.zip">
+            <a className={downloadButton} href={`${getBasePath()}/extensions/foodex-helper.zip`} download="foodex-helper.zip">
               ⬇️ Download Foodex Helper Extension
             </a>
             <p className="text-xs text-slate-500 mt-2">

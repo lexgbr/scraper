@@ -7,7 +7,8 @@
   "host_permissions": [
     "https://foodex.london/*",
     "http://localhost:3000/*",
-    "https://*/api/manual/foodex*"
+    "https://*/api/manual/foodex*",
+    "http://94.72.102.173/scraper/*"
   ],
   "background": {
     "service_worker": "worker.js",

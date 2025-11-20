@@ -30,7 +30,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 function normalizeBaseUrl(input) {
   try {
     const parsed = new URL(input);
-    return parsed.origin;
+    const pathname = parsed.pathname.replace(/\/+$/, '');
+    return `${parsed.origin}${pathname || ''}`;
   } catch {
     return null;
   }
