@@ -216,7 +216,15 @@ export default function ProductsPage() {
                       checked={state.enabled}
                       onChange={(event) => toggleSite(site.id, event.target.checked)}
                     />
-                    Track {site.name}
+                    Track {site.name}{' '}
+                    <a
+                      href={site.baseUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs text-indigo-600 hover:text-indigo-700 hover:underline"
+                    >
+                      (Click here to go to site)
+                    </a>
                   </label>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <input
