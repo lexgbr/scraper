@@ -7,7 +7,7 @@ import { resolveSiteById } from '../lib/sites.js';
 const SITE = resolveSiteById('romprod');
 const BASE_URL = SITE?.baseUrl ?? 'https://romprod.uk';
 const ACCOUNT_URL = new URL(SITE?.loginPath ?? '/my-account/', BASE_URL).toString();
-const DEFAULT_SELECTOR = SITE?.defaultSelector ?? 'span.woocommerce-Price-amount bdi';
+const DEFAULT_SELECTOR = SITE?.defaultSelector ?? '.elementor-widget-woocommerce-product-price p span, p.price span, span.woocommerce-Price-amount';
 
 export class Romprod extends BaseAdapter {
   siteId = 'romprod' as const;
@@ -37,7 +37,19 @@ export class Romprod extends BaseAdapter {
       .first()
       .click();
 
-    await page.waitForURL('**/my-account/**', { timeout: 15000 });
+    try {
+      await page.waitForURL('**/my-account/**', { timeout: 15000 });
+    } catch {
+      // Wait for network to settle instead
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => undefined);
+      await page.waitForTimeout(1000);
+    }
+
+    // Verify login by checking for logout link
+    const loggedIn = (await page.locator('a[href*="customer-logout"]').count()) > 0;
+    if (!loggedIn) {
+      throw new Error('Romprod login failed - no logout link found');
+    }
   }
 
   async extractPrice(page: Page, link: ProductLink): Promise<PriceResult> {
