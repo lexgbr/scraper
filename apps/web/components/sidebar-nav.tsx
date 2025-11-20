@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { apiUrl } from '../lib/api';
 
 const links = [
   { href: '/', label: 'Dashboard' },
@@ -11,6 +12,17 @@ const links = [
 
 export default function SidebarNav() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    try {
+      await fetch(apiUrl('/api/auth/logout'), { method: 'POST' });
+      router.push('/login');
+      router.refresh();
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
 
   return (
     <aside className="w-64 shrink-0 rounded-3xl border border-white/70 bg-white/95 p-6 shadow-lg shadow-slate-200/70 backdrop-blur">
@@ -42,6 +54,12 @@ export default function SidebarNav() {
             </Link>
           );
         })}
+        <button
+          onClick={handleLogout}
+          className="mt-4 rounded-2xl px-3 py-2 text-left text-red-600 transition hover:bg-red-50"
+        >
+          Logout
+        </button>
       </nav>
     </aside>
   );
